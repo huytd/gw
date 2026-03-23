@@ -161,10 +161,19 @@ int cmd_done(const WorktreeList *wl) {
     fprintf(stderr, "✓ Merged %s into %s\n", current_branch, main_branch);
 
     char cwd[MAX_PATH_LEN] = {0};
-    getcwd(cwd, sizeof(cwd));
+    if (!getcwd(cwd, sizeof(cwd))) {
+        fprintf(stderr, "✗ Could not determine current working directory\n");
+        return 1;
+    }
 
-    /* Move to main before removing this worktree */
+    /* Move parent shell and this process to main before removing this worktree.
+       The shell wrapper applies cd: after this binary exits, so we must chdir
+       here as well to avoid running later git commands from a deleted cwd. */
     emit_cd(main_path);
+    if (chdir(main_path) != 0) {
+        fprintf(stderr, "✗ Failed to switch to main worktree\n");
+        return 1;
+    }
 
     if (!git_worktree_remove(cwd)) {
         fprintf(stderr, "✗ Failed to remove worktree\n");
