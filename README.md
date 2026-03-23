@@ -13,6 +13,7 @@ for fish, bash, and zsh. No dependencies beyond a C compiler and git.
 | `gw n <branch>` / `gw new <branch>` | Create new worktree + branch |
 | `gw r <branch>` / `gw remove <branch>` | Remove a worktree |
 | `gw d` / `gw done` | Merge → remove worktree → delete branch |
+| `gw p <branch>` / `gw pull <branch>` | Soft-merge branch changes into main (no commit) |
 | `gw <branch> [cmd...]` | Jump to worktree, optionally run a command |
 | `gw init fish\|bash\|zsh` | Print shell integration code |
 
@@ -57,7 +58,7 @@ src/
 ├── main.c      — Argument parsing and dispatch
 ├── git.c/h     — Git subprocess wrappers (worktree list, log, diff, merge, …)
 ├── display.c/h — Colored worktree list output
-├── worktree.c/h— Command implementations (jump, new, remove, done)
+├── worktree.c/h— Command implementations (jump, new, remove, done, pull)
 └── init.c/h    — Shell integration code generator (fish / bash / zsh)
 ```
 
