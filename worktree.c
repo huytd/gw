@@ -108,24 +108,25 @@ int cmd_new(const WorktreeList *wl, const char *branch, int argc, char **extra_a
 /* ── remove ────────────────────────────────────────────────────────────── */
 
 int cmd_remove(const WorktreeList *wl, const char *branch) {
-    const char *main_folder = git_basename(wl->items[0].path);
-
-    char target_folder[MAX_PATH_LEN];
-    snprintf(target_folder, sizeof(target_folder), "%s-%s", main_folder, branch);
+    const Worktree *wt = find_worktree(wl, branch);
+    if (!wt) {
+        fprintf(stderr,
+            COLOR_RED "✗" COLOR_RESET " Worktree '%s' not found\n", branch);
+        return 1;
+    }
 
     /* If we're inside the worktree being removed, move to main first */
     char cwd[MAX_PATH_LEN] = {0};
     if (getcwd(cwd, sizeof(cwd))) {
-        const Worktree *wt = find_worktree(wl, target_folder);
-        if (wt && strcmp(cwd, wt->path) == 0) {
+        if (strcmp(cwd, wt->path) == 0) {
             emit_cd(wl->items[0].path);
             fprintf(stderr, COLOR_GREEN "✓" COLOR_RESET " Moved to main worktree\n");
         }
     }
 
-    if (!git_worktree_remove(target_folder)) {
+    if (!git_worktree_remove(wt->path)) {
         fprintf(stderr,
-            COLOR_RED "✗" COLOR_RESET " Failed to remove worktree '%s' (may not exist or have uncommitted changes)\n",
+            COLOR_RED "✗" COLOR_RESET " Failed to remove worktree '%s' (may have uncommitted changes)\n",
             branch);
         return 1;
     }
