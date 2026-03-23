@@ -15,9 +15,9 @@ static void print_usage(void) {
         "  l, list           List all worktrees\n"
         "  j, jump BRANCH    Jump to specified worktree\n"
         "  n, new  BRANCH    Create new worktree with branch\n"
-        "  r, remove BRANCH  Remove specified worktree\n"
+        "  r, remove [BRANCH] Remove specified worktree (default: current)\n"
         "  d, done           Merge current branch into main and clean up\n"
-        "  p, pull BRANCH    Soft-merge branch changes into main (no commit)\n"
+        "  p, pull [BRANCH]  Soft-merge branch changes into main (default: current)\n"
         "  init SHELL        Print shell integration (fish|bash|zsh)\n"
         "  BRANCH [CMD...]   Jump to worktree, optionally run a command\n"
         "\n"
@@ -82,7 +82,13 @@ int main(int argc, char **argv) {
 
     /* remove */
     if (strcmp(opt, "r") == 0 || strcmp(opt, "remove") == 0) {
-        if (!param) { fprintf(stderr, COLOR_RED "✗" COLOR_RESET " Please specify a worktree to remove\n"); return 1; }
+        char cur_branch[MAX_BRANCH_LEN] = {0};
+        if (!param) {
+            if (!git_current_branch(cur_branch, sizeof(cur_branch))) {
+                fprintf(stderr, COLOR_RED "✗" COLOR_RESET " Could not determine current branch\n"); return 1;
+            }
+            param = cur_branch;
+        }
         return cmd_remove(&wl, param);
     }
 
@@ -93,7 +99,13 @@ int main(int argc, char **argv) {
 
     /* pull */
     if (strcmp(opt, "p") == 0 || strcmp(opt, "pull") == 0) {
-        if (!param) { fprintf(stderr, COLOR_RED "✗" COLOR_RESET " Please specify a branch to pull from\n"); return 1; }
+        char cur_branch[MAX_BRANCH_LEN] = {0};
+        if (!param) {
+            if (!git_current_branch(cur_branch, sizeof(cur_branch))) {
+                fprintf(stderr, COLOR_RED "✗" COLOR_RESET " Could not determine current branch\n"); return 1;
+            }
+            param = cur_branch;
+        }
         return cmd_pull(&wl, param);
     }
 

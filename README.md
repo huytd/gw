@@ -11,9 +11,9 @@ for fish, bash, and zsh. No dependencies beyond a C compiler and git.
 | `gw l` / `gw list` | List all worktrees with diff stats |
 | `gw j <branch>` / `gw jump <branch>` | Jump to a worktree |
 | `gw n <branch>` / `gw new <branch>` | Create new worktree + branch |
-| `gw r <branch>` / `gw remove <branch>` | Remove a worktree |
+| `gw r [branch]` / `gw remove [branch]` | Remove a worktree (default: current) |
 | `gw d` / `gw done` | Merge → remove worktree → delete branch |
-| `gw p <branch>` / `gw pull <branch>` | Soft-merge branch changes into main (no commit) |
+| `gw p [branch]` / `gw pull [branch]` | Soft-merge branch changes into main (default: current) |
 | `gw <branch> [cmd...]` | Jump to worktree, optionally run a command |
 | `gw init fish\|bash\|zsh` | Print shell integration code |
 
