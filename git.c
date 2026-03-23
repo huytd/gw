@@ -125,7 +125,15 @@ bool git_current_branch(char *out, int size) {
 bool git_worktree_add(const char *target_path, const char *branch) {
     char cmd[1024];
     snprintf(cmd, sizeof(cmd),
-        "git worktree add '%s' -b '%s' >/dev/null 2>&1",
+        "git worktree add '%s' -b '%s' >/dev/null",
+        target_path, branch);
+    return system(cmd) == 0;
+}
+
+bool git_worktree_add_existing(const char *target_path, const char *branch) {
+    char cmd[1024];
+    snprintf(cmd, sizeof(cmd),
+        "git worktree add '%s' '%s' >/dev/null",
         target_path, branch);
     return system(cmd) == 0;
 }
@@ -149,6 +157,14 @@ bool git_delete_branch(const char *branch) {
     snprintf(cmd, sizeof(cmd),
         "git branch -d '%s' >/dev/null 2>&1", branch);
     return system(cmd) == 0;
+}
+
+bool git_branch_exists(const char *branch) {
+    char cmd[1024];
+    snprintf(cmd, sizeof(cmd),
+        "git show-ref --verify --quiet 'refs/heads/%s'",
+        branch);
+    return run_silent(cmd);
 }
 
 const char *git_basename(const char *path) {

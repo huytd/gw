@@ -51,18 +51,51 @@ int cmd_new(const WorktreeList *wl, const char *branch, int argc, char **extra_a
     char target_path[MAX_PATH_LEN];
     snprintf(target_path, sizeof(target_path), "../%s-%s", main_folder, branch);
 
-    if (!git_worktree_add(target_path, branch)) {
+    /* If it already exists, reuse it (idempotent behavior). */
+    WorktreeList fresh = {0};
+    int listed = git_list_worktrees(&fresh);
+    const Worktree *wt = (listed > 0) ? find_worktree(&fresh, branch) : NULL;
+    if (wt) {
+        emit_cd(wt->path);
+        fprintf(stderr, "✓ Work tree %s already exists, reusing it\n", branch);
+        if (argc > 0) {
+            fprintf(stderr, "✓ Starting command...\n");
+            emit_exec(argc, extra_argv);
+        }
+        return 0;
+    }
+
+    bool created_new = false;
+    bool attached_existing_branch = false;
+
+    if (git_branch_exists(branch)) {
+        attached_existing_branch = git_worktree_add_existing(target_path, branch);
+    } else {
+        created_new = git_worktree_add(target_path, branch);
+        if (!created_new && git_branch_exists(branch)) {
+            /* Branch might have been created concurrently; retry as existing. */
+            attached_existing_branch = git_worktree_add_existing(target_path, branch);
+        }
+    }
+
+    if (!created_new && !attached_existing_branch) {
         fprintf(stderr, "✗ Failed to create worktree '%s'\n", branch);
         return 1;
     }
 
     /* Re-read to get absolute path */
-    WorktreeList fresh = {0};
-    git_list_worktrees(&fresh);
-    const Worktree *wt = find_worktree(&fresh, branch);
-    if (wt) emit_cd(wt->path);
+    WorktreeList latest = {0};
+    if (git_list_worktrees(&latest) > 0) {
+        wt = find_worktree(&latest, branch);
+    } else {
+        wt = NULL;
+    }
 
-    fprintf(stderr, "✓ Work tree %s created!\n", branch);
+    if (wt) emit_cd(wt->path);
+    else emit_cd(target_path); /* Fallback if listing fails unexpectedly */
+
+    if (created_new) fprintf(stderr, "✓ Work tree %s created!\n", branch);
+    else fprintf(stderr, "✓ Work tree %s created from existing branch\n", branch);
 
     if (argc > 0) {
         fprintf(stderr, "✓ Starting command...\n");
