@@ -1,5 +1,6 @@
 #include "worktree.h"
 #include "git.h"
+#include "display.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -35,11 +36,11 @@ static void emit_exec(int argc, char **argv) {
 int cmd_jump(const WorktreeList *wl, const char *branch) {
     const Worktree *wt = find_worktree(wl, branch);
     if (!wt) {
-        fprintf(stderr, "✗ Worktree '%s' not found\n", branch);
+        fprintf(stderr, COLOR_RED "✗" COLOR_RESET " Worktree '%s' not found\n", branch);
         return 1;
     }
     emit_cd(wt->path);
-    fprintf(stderr, "✓ You are now working in %s\n", branch);
+    fprintf(stderr, COLOR_GREEN "✓" COLOR_RESET " You are now working in %s\n", branch);
     return 0;
 }
 
@@ -57,9 +58,9 @@ int cmd_new(const WorktreeList *wl, const char *branch, int argc, char **extra_a
     const Worktree *wt = (listed > 0) ? find_worktree(&fresh, branch) : NULL;
     if (wt) {
         emit_cd(wt->path);
-        fprintf(stderr, "✓ Work tree %s already exists, reusing it\n", branch);
+        fprintf(stderr, COLOR_GREEN "✓" COLOR_RESET " Work tree %s already exists, reusing it\n", branch);
         if (argc > 0) {
-            fprintf(stderr, "✓ Starting command...\n");
+            fprintf(stderr, COLOR_GREEN "✓" COLOR_RESET " Starting command...\n");
             emit_exec(argc, extra_argv);
         }
         return 0;
@@ -79,7 +80,7 @@ int cmd_new(const WorktreeList *wl, const char *branch, int argc, char **extra_a
     }
 
     if (!created_new && !attached_existing_branch) {
-        fprintf(stderr, "✗ Failed to create worktree '%s'\n", branch);
+        fprintf(stderr, COLOR_RED "✗" COLOR_RESET " Failed to create worktree '%s'\n", branch);
         return 1;
     }
 
@@ -94,11 +95,11 @@ int cmd_new(const WorktreeList *wl, const char *branch, int argc, char **extra_a
     if (wt) emit_cd(wt->path);
     else emit_cd(target_path); /* Fallback if listing fails unexpectedly */
 
-    if (created_new) fprintf(stderr, "✓ Work tree %s created!\n", branch);
-    else fprintf(stderr, "✓ Work tree %s created from existing branch\n", branch);
+    if (created_new) fprintf(stderr, COLOR_GREEN "✓" COLOR_RESET " Work tree %s created!\n", branch);
+    else fprintf(stderr, COLOR_GREEN "✓" COLOR_RESET " Work tree %s created from existing branch\n", branch);
 
     if (argc > 0) {
-        fprintf(stderr, "✓ Starting command...\n");
+        fprintf(stderr, COLOR_GREEN "✓" COLOR_RESET " Starting command...\n");
         emit_exec(argc, extra_argv);
     }
     return 0;
@@ -118,17 +119,17 @@ int cmd_remove(const WorktreeList *wl, const char *branch) {
         const Worktree *wt = find_worktree(wl, target_folder);
         if (wt && strcmp(cwd, wt->path) == 0) {
             emit_cd(wl->items[0].path);
-            fprintf(stderr, "✓ Moved to main worktree\n");
+            fprintf(stderr, COLOR_GREEN "✓" COLOR_RESET " Moved to main worktree\n");
         }
     }
 
     if (!git_worktree_remove(target_folder)) {
         fprintf(stderr,
-            "✗ Failed to remove worktree '%s' (may not exist or have uncommitted changes)\n",
+            COLOR_RED "✗" COLOR_RESET " Failed to remove worktree '%s' (may not exist or have uncommitted changes)\n",
             branch);
         return 1;
     }
-    fprintf(stderr, "✓ Work tree %s removed!\n", branch);
+    fprintf(stderr, COLOR_GREEN "✓" COLOR_RESET " Work tree %s removed!\n", branch);
     return 0;
 }
 
@@ -140,29 +141,29 @@ int cmd_done(const WorktreeList *wl) {
 
     char current_branch[MAX_BRANCH_LEN] = {0};
     if (!git_current_branch(current_branch, sizeof(current_branch))) {
-        fprintf(stderr, "✗ Could not determine current branch\n");
+        fprintf(stderr, COLOR_RED "✗" COLOR_RESET " Could not determine current branch\n");
         return 1;
     }
 
     if (strcmp(current_branch, "main") == 0 || strcmp(current_branch, "master") == 0) {
-        fprintf(stderr, "✗ Already on %s, nothing to do\n", current_branch);
+        fprintf(stderr, COLOR_RED "✗" COLOR_RESET " Already on %s, nothing to do\n", current_branch);
         return 1;
     }
 
     if (!git_is_clean()) {
-        fprintf(stderr, "✗ Uncommitted changes detected, please commit or stash first\n");
+        fprintf(stderr, COLOR_RED "✗" COLOR_RESET " Uncommitted changes detected, please commit or stash first\n");
         return 1;
     }
 
     if (!git_merge(main_path, current_branch)) {
-        fprintf(stderr, "✗ Merge failed, please resolve conflicts manually\n");
+        fprintf(stderr, COLOR_RED "✗" COLOR_RESET " Merge failed, please resolve conflicts manually\n");
         return 1;
     }
-    fprintf(stderr, "✓ Merged %s into %s\n", current_branch, main_branch);
+    fprintf(stderr, COLOR_GREEN "✓" COLOR_RESET " Merged %s into %s\n", current_branch, main_branch);
 
     char cwd[MAX_PATH_LEN] = {0};
     if (!getcwd(cwd, sizeof(cwd))) {
-        fprintf(stderr, "✗ Could not determine current working directory\n");
+        fprintf(stderr, COLOR_RED "✗" COLOR_RESET " Could not determine current working directory\n");
         return 1;
     }
 
@@ -171,22 +172,22 @@ int cmd_done(const WorktreeList *wl) {
        here as well to avoid running later git commands from a deleted cwd. */
     emit_cd(main_path);
     if (chdir(main_path) != 0) {
-        fprintf(stderr, "✗ Failed to switch to main worktree\n");
+        fprintf(stderr, COLOR_RED "✗" COLOR_RESET " Failed to switch to main worktree\n");
         return 1;
     }
 
     if (!git_worktree_remove(cwd)) {
-        fprintf(stderr, "✗ Failed to remove worktree\n");
+        fprintf(stderr, COLOR_RED "✗" COLOR_RESET " Failed to remove worktree\n");
         return 1;
     }
-    fprintf(stderr, "✓ Worktree removed\n");
+    fprintf(stderr, COLOR_GREEN "✓" COLOR_RESET " Worktree removed\n");
 
     if (!git_delete_branch(current_branch)) {
-        fprintf(stderr, "✗ Failed to delete branch %s\n", current_branch);
+        fprintf(stderr, COLOR_RED "✗" COLOR_RESET " Failed to delete branch %s\n", current_branch);
         return 1;
     }
-    fprintf(stderr, "✓ Branch %s deleted\n", current_branch);
-    fprintf(stderr, "✓ Done! Now on %s\n", main_branch);
+    fprintf(stderr, COLOR_GREEN "✓" COLOR_RESET " Branch %s deleted\n", current_branch);
+    fprintf(stderr, COLOR_GREEN "✓" COLOR_RESET " Done! Now on %s\n", main_branch);
     return 0;
 }
 
@@ -198,21 +199,21 @@ int cmd_pull(const WorktreeList *wl, const char *branch) {
 
     const Worktree *wt = find_worktree(wl, branch);
     if (!wt) {
-        fprintf(stderr, "✗ Worktree '%s' not found\n", branch);
+        fprintf(stderr, COLOR_RED "✗" COLOR_RESET " Worktree '%s' not found\n", branch);
         return 1;
     }
 
     if (strcmp(wt->branch, main_branch) == 0) {
-        fprintf(stderr, "✗ Cannot pull from the main worktree into itself\n");
+        fprintf(stderr, COLOR_RED "✗" COLOR_RESET " Cannot pull from the main worktree into itself\n");
         return 1;
     }
 
     if (!git_merge_no_commit(main_path, wt->branch)) {
-        fprintf(stderr, "✗ Merge failed, please resolve conflicts manually in %s\n", main_path);
+        fprintf(stderr, COLOR_RED "✗" COLOR_RESET " Merge failed, please resolve conflicts manually in %s\n", main_path);
         return 1;
     }
 
-    fprintf(stderr, "✓ Pulled changes from %s into %s (staged, not committed)\n",
+    fprintf(stderr, COLOR_GREEN "✓" COLOR_RESET " Pulled changes from %s into %s (staged, not committed)\n",
             wt->branch, main_branch);
     return 0;
 }
@@ -224,10 +225,10 @@ int cmd_branch_jump(const WorktreeList *wl, const char *name, int argc, char **e
     if (!wt) return -1; /* signal: not found, caller prints usage */
 
     emit_cd(wt->path);
-    fprintf(stderr, "✓ Jumping to work tree %s\n", name);
+    fprintf(stderr, COLOR_GREEN "✓" COLOR_RESET " Jumping to work tree %s\n", name);
 
     if (argc > 0) {
-        fprintf(stderr, "✓ Starting command...\n");
+        fprintf(stderr, COLOR_GREEN "✓" COLOR_RESET " Starting command...\n");
         emit_exec(argc, extra_argv);
     }
     return 0;

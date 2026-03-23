@@ -37,18 +37,18 @@ int main(int argc, char **argv) {
         if (strcmp(shell, "fish") == 0) { print_init_fish(); return 0; }
         if (strcmp(shell, "bash") == 0) { print_init_bash(); return 0; }
         if (strcmp(shell, "zsh")  == 0) { print_init_zsh();  return 0; }
-        fprintf(stderr, "✗ Unknown shell '%s'. Use: fish, bash, or zsh\n", shell);
+        fprintf(stderr, COLOR_RED "✗" COLOR_RESET " Unknown shell '%s'. Use: fish, bash, or zsh\n", shell);
         return 1;
     }
 
     if (!git_is_inside_work_tree()) {
-        fprintf(stderr, "✗ Not in a git worktree!\n");
+        fprintf(stderr, COLOR_RED "✗" COLOR_RESET " Not in a git worktree!\n");
         return 1;
     }
 
     WorktreeList wl = {0};
     if (git_list_worktrees(&wl) <= 0) {
-        fprintf(stderr, "✗ Could not read worktree list\n");
+        fprintf(stderr, COLOR_RED "✗" COLOR_RESET " Could not read worktree list\n");
         return 1;
     }
 
@@ -69,20 +69,20 @@ int main(int argc, char **argv) {
 
     /* jump */
     if (strcmp(opt, "j") == 0 || strcmp(opt, "jump") == 0) {
-        if (!param) { fprintf(stderr, "✗ Please specify a worktree to jump to\n"); return 1; }
+        if (!param) { fprintf(stderr, COLOR_RED "✗" COLOR_RESET " Please specify a worktree to jump to\n"); return 1; }
         return cmd_jump(&wl, param);
     }
 
     /* new */
     if (strcmp(opt, "n") == 0 || strcmp(opt, "new") == 0) {
-        if (!param) { fprintf(stderr, "✗ Please specify a branch name for the new worktree\n"); return 1; }
+        if (!param) { fprintf(stderr, COLOR_RED "✗" COLOR_RESET " Please specify a branch name for the new worktree\n"); return 1; }
         /* extra args start at argv[3] */
         return cmd_new(&wl, param, argc - 3, argv + 3);
     }
 
     /* remove */
     if (strcmp(opt, "r") == 0 || strcmp(opt, "remove") == 0) {
-        if (!param) { fprintf(stderr, "✗ Please specify a worktree to remove\n"); return 1; }
+        if (!param) { fprintf(stderr, COLOR_RED "✗" COLOR_RESET " Please specify a worktree to remove\n"); return 1; }
         return cmd_remove(&wl, param);
     }
 
@@ -93,14 +93,14 @@ int main(int argc, char **argv) {
 
     /* pull */
     if (strcmp(opt, "p") == 0 || strcmp(opt, "pull") == 0) {
-        if (!param) { fprintf(stderr, "✗ Please specify a branch to pull from\n"); return 1; }
+        if (!param) { fprintf(stderr, COLOR_RED "✗" COLOR_RESET " Please specify a branch to pull from\n"); return 1; }
         return cmd_pull(&wl, param);
     }
 
     /* Bare branch name: gw <branch> [cmd...] */
     int rc = cmd_branch_jump(&wl, opt, argc - 2, argv + 2);
     if (rc == -1) {
-        fprintf(stderr, "✗ Unknown worktree or command: %s\n\n", opt);
+        fprintf(stderr, COLOR_RED "✗" COLOR_RESET " Unknown worktree or command: %s\n\n", opt);
         print_usage();
         return 1;
     }
