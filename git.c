@@ -152,6 +152,14 @@ bool git_merge(const char *repo_path, const char *branch) {
     return system(cmd) == 0;
 }
 
+bool git_merge_no_commit(const char *repo_path, const char *branch) {
+    char cmd[1024];
+    snprintf(cmd, sizeof(cmd),
+        "git -C '%s' merge --no-commit --no-ff '%s'",
+        repo_path, branch);
+    return system(cmd) == 0;
+}
+
 bool git_delete_branch(const char *branch) {
     char cmd[256];
     snprintf(cmd, sizeof(cmd),

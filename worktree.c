@@ -190,6 +190,33 @@ int cmd_done(const WorktreeList *wl) {
     return 0;
 }
 
+/* ── pull ──────────────────────────────────────────────────────────────── */
+
+int cmd_pull(const WorktreeList *wl, const char *branch) {
+    const char *main_path   = wl->items[0].path;
+    const char *main_branch = wl->items[0].branch;
+
+    const Worktree *wt = find_worktree(wl, branch);
+    if (!wt) {
+        fprintf(stderr, "✗ Worktree '%s' not found\n", branch);
+        return 1;
+    }
+
+    if (strcmp(wt->branch, main_branch) == 0) {
+        fprintf(stderr, "✗ Cannot pull from the main worktree into itself\n");
+        return 1;
+    }
+
+    if (!git_merge_no_commit(main_path, wt->branch)) {
+        fprintf(stderr, "✗ Merge failed, please resolve conflicts manually in %s\n", main_path);
+        return 1;
+    }
+
+    fprintf(stderr, "✓ Pulled changes from %s into %s (staged, not committed)\n",
+            wt->branch, main_branch);
+    return 0;
+}
+
 /* ── bare branch jump (gw <branch> [cmd...]) ───────────────────────────── */
 
 int cmd_branch_jump(const WorktreeList *wl, const char *name, int argc, char **extra_argv) {

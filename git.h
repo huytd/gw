@@ -26,6 +26,7 @@ bool        git_worktree_add(const char *target_path, const char *branch);
 bool        git_worktree_add_existing(const char *target_path, const char *branch);
 bool        git_worktree_remove(const char *path_or_name);
 bool        git_merge(const char *repo_path, const char *branch);
+bool        git_merge_no_commit(const char *repo_path, const char *branch);
 bool        git_delete_branch(const char *branch);
 bool        git_branch_exists(const char *branch);
 const char *git_basename(const char *path);

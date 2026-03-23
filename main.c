@@ -17,6 +17,7 @@ static void print_usage(void) {
         "  n, new  BRANCH    Create new worktree with branch\n"
         "  r, remove BRANCH  Remove specified worktree\n"
         "  d, done           Merge current branch into main and clean up\n"
+        "  p, pull BRANCH    Soft-merge branch changes into main (no commit)\n"
         "  init SHELL        Print shell integration (fish|bash|zsh)\n"
         "  BRANCH [CMD...]   Jump to worktree, optionally run a command\n"
         "\n"
@@ -88,6 +89,12 @@ int main(int argc, char **argv) {
     /* done */
     if (strcmp(opt, "d") == 0 || strcmp(opt, "done") == 0) {
         return cmd_done(&wl);
+    }
+
+    /* pull */
+    if (strcmp(opt, "p") == 0 || strcmp(opt, "pull") == 0) {
+        if (!param) { fprintf(stderr, "✗ Please specify a branch to pull from\n"); return 1; }
+        return cmd_pull(&wl, param);
     }
 
     /* Bare branch name: gw <branch> [cmd...] */
