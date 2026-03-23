@@ -1,0 +1,165 @@
+#include "worktree.h"
+#include "git.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+/* Find the first worktree whose path or branch contains `needle`. */
+static const Worktree *find_worktree(const WorktreeList *wl, const char *needle) {
+    for (int i = 0; i < wl->count; i++) {
+        if (strstr(wl->items[i].path,   needle) ||
+            strcmp(wl->items[i].branch, needle) == 0)
+            return &wl->items[i];
+    }
+    return NULL;
+}
+
+/* Emit the cd directive the shell wrapper will act on. */
+static void emit_cd(const char *path) {
+    printf("cd:%s\n", path);
+}
+
+/* Emit a command for the shell wrapper to eval in the new directory. */
+static void emit_exec(int argc, char **argv) {
+    printf("exec:");
+    for (int i = 0; i < argc; i++) {
+        if (i) printf(" ");
+        printf("%s", argv[i]);
+    }
+    printf("\n");
+}
+
+/* ── jump ──────────────────────────────────────────────────────────────── */
+
+int cmd_jump(const WorktreeList *wl, const char *branch) {
+    const Worktree *wt = find_worktree(wl, branch);
+    if (!wt) {
+        fprintf(stderr, "✗ Worktree '%s' not found\n", branch);
+        return 1;
+    }
+    emit_cd(wt->path);
+    fprintf(stderr, "✓ You are now working in %s\n", branch);
+    return 0;
+}
+
+/* ── new ───────────────────────────────────────────────────────────────── */
+
+int cmd_new(const WorktreeList *wl, const char *branch, int argc, char **extra_argv) {
+    const char *main_folder = git_basename(wl->items[0].path);
+
+    char target_path[MAX_PATH_LEN];
+    snprintf(target_path, sizeof(target_path), "../%s-%s", main_folder, branch);
+
+    if (!git_worktree_add(target_path, branch)) {
+        fprintf(stderr, "✗ Failed to create worktree '%s'\n", branch);
+        return 1;
+    }
+
+    /* Re-read to get absolute path */
+    WorktreeList fresh = {0};
+    git_list_worktrees(&fresh);
+    const Worktree *wt = find_worktree(&fresh, branch);
+    if (wt) emit_cd(wt->path);
+
+    fprintf(stderr, "✓ Work tree %s created!\n", branch);
+
+    if (argc > 0) {
+        fprintf(stderr, "✓ Starting command...\n");
+        emit_exec(argc, extra_argv);
+    }
+    return 0;
+}
+
+/* ── remove ────────────────────────────────────────────────────────────── */
+
+int cmd_remove(const WorktreeList *wl, const char *branch) {
+    const char *main_folder = git_basename(wl->items[0].path);
+
+    char target_folder[MAX_PATH_LEN];
+    snprintf(target_folder, sizeof(target_folder), "%s-%s", main_folder, branch);
+
+    /* If we're inside the worktree being removed, move to main first */
+    char cwd[MAX_PATH_LEN] = {0};
+    if (getcwd(cwd, sizeof(cwd))) {
+        const Worktree *wt = find_worktree(wl, target_folder);
+        if (wt && strcmp(cwd, wt->path) == 0) {
+            emit_cd(wl->items[0].path);
+            fprintf(stderr, "✓ Moved to main worktree\n");
+        }
+    }
+
+    if (!git_worktree_remove(target_folder)) {
+        fprintf(stderr,
+            "✗ Failed to remove worktree '%s' (may not exist or have uncommitted changes)\n",
+            branch);
+        return 1;
+    }
+    fprintf(stderr, "✓ Work tree %s removed!\n", branch);
+    return 0;
+}
+
+/* ── done ──────────────────────────────────────────────────────────────── */
+
+int cmd_done(const WorktreeList *wl) {
+    const char *main_path   = wl->items[0].path;
+    const char *main_branch = wl->items[0].branch;
+
+    char current_branch[MAX_BRANCH_LEN] = {0};
+    if (!git_current_branch(current_branch, sizeof(current_branch))) {
+        fprintf(stderr, "✗ Could not determine current branch\n");
+        return 1;
+    }
+
+    if (strcmp(current_branch, "main") == 0 || strcmp(current_branch, "master") == 0) {
+        fprintf(stderr, "✗ Already on %s, nothing to do\n", current_branch);
+        return 1;
+    }
+
+    if (!git_is_clean()) {
+        fprintf(stderr, "✗ Uncommitted changes detected, please commit or stash first\n");
+        return 1;
+    }
+
+    if (!git_merge(main_path, current_branch)) {
+        fprintf(stderr, "✗ Merge failed, please resolve conflicts manually\n");
+        return 1;
+    }
+    fprintf(stderr, "✓ Merged %s into %s\n", current_branch, main_branch);
+
+    char cwd[MAX_PATH_LEN] = {0};
+    getcwd(cwd, sizeof(cwd));
+
+    /* Move to main before removing this worktree */
+    emit_cd(main_path);
+
+    if (!git_worktree_remove(cwd)) {
+        fprintf(stderr, "✗ Failed to remove worktree\n");
+        return 1;
+    }
+    fprintf(stderr, "✓ Worktree removed\n");
+
+    if (!git_delete_branch(current_branch)) {
+        fprintf(stderr, "✗ Failed to delete branch %s\n", current_branch);
+        return 1;
+    }
+    fprintf(stderr, "✓ Branch %s deleted\n", current_branch);
+    fprintf(stderr, "✓ Done! Now on %s\n", main_branch);
+    return 0;
+}
+
+/* ── bare branch jump (gw <branch> [cmd...]) ───────────────────────────── */
+
+int cmd_branch_jump(const WorktreeList *wl, const char *name, int argc, char **extra_argv) {
+    const Worktree *wt = find_worktree(wl, name);
+    if (!wt) return -1; /* signal: not found, caller prints usage */
+
+    emit_cd(wt->path);
+    fprintf(stderr, "✓ Jumping to work tree %s\n", name);
+
+    if (argc > 0) {
+        fprintf(stderr, "✓ Starting command...\n");
+        emit_exec(argc, extra_argv);
+    }
+    return 0;
+}
